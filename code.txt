@@ -1,0 +1,153 @@
+
+
+
+int sensor1 = D2;
+int sensor2 = D7; 
+int sensor3 = D6; 
+int sensor4 = D5;
+
+String v1 = "0";
+String v2 = "0";
+String v3 = "0";
+String v4 = "0";
+
+String vSensor = "";
+
+int ENA = D8; 
+int IN1 = D0;
+int IN2 = D1;
+
+int ENB = D3; 
+int IN3 = D1;
+int IN4 = D0;
+
+int lineV = 0;
+int groundV = 0;
+int meanV = 500;
+int N = 5;
+int motorSpeed;
+int baseSpeed = 550;
+int rightSpeed, leftSpeed;
+int maxSpeed = 1000; 
+int sum_error = 0;
+
+// PID
+int error = 0;
+int pre_error = 0;
+int Kp = 310;
+int Kd = 5;
+int Ki = 0;
+
+String noLine = "N";
+
+void Motor(int motor, int speed) {
+	if (motor == 1) {
+		analogWrite(ENA, speed);
+		digitalWrite(IN1, HIGH);
+		digitalWrite(IN2, LOW);
+	}
+	else if (motor == 2) {
+		analogWrite(ENB, speed);
+		digitalWrite(IN3, LOW);
+		digitalWrite(IN4, HIGH);
+	}
+}
+
+void Control() {
+
+	v1 = String(digitalRead(sensor1));
+	v2 = String(digitalRead(sensor2));
+	v3 = String(digitalRead(sensor3));
+	v4 = String(digitalRead(sensor4));
+
+	vSensor = String(v1 + v2 + v3 + v4);
+
+	if (vSensor == "1000") {
+		error = -3;
+	}
+	else if (vSensor == "1100") {
+		error = -2;
+	}
+	else if (vSensor == "0100") {
+		error = -1;
+	}
+	else if (vSensor == "0110") {
+		error = 0;
+	}
+	else if (vSensor == "0010") {
+		error = 1;
+	}
+	else if (vSensor == "0011") {
+		error = 2;
+	}
+	else if (vSensor == "0001") {
+		error = 3;
+	}
+	//เจอแต่ขาว
+	else if (vSensor == "0000") {
+		error = pre_error;
+		noLine = "Y";
+	}
+
+	motorSpeed = Kp * error; +Kd * (error - pre_error) + Ki * (sum_error);
+	leftSpeed = baseSpeed + motorSpeed;
+	rightSpeed = baseSpeed - motorSpeed;
+
+	if (leftSpeed > maxSpeed) leftSpeed = maxSpeed;
+	if (rightSpeed > maxSpeed) rightSpeed = maxSpeed;
+
+	if (leftSpeed < -maxSpeed) leftSpeed = -maxSpeed;
+	if (rightSpeed < -maxSpeed) rightSpeed = -maxSpeed;
+
+
+	// Check Line
+	if (noLine == "Y") {
+		leftSpeed = 0;
+		rightSpeed = 0;
+
+		noLine = "N";
+	}
+
+	Serial.println(vSensor);
+	Serial.println(error);
+	Serial.println(leftSpeed);
+	Serial.println(rightSpeed);
+
+	Serial.println("------");
+
+	Motor(1, leftSpeed);
+	Motor(2, rightSpeed);
+
+
+	pre_error = error;
+	sum_error += error;
+
+
+}
+
+void setup()
+{
+	//IR
+	pinMode(INPUT, sensor1);
+	pinMode(INPUT, sensor2);
+	pinMode(INPUT, sensor3);
+	pinMode(INPUT, sensor4);
+
+	//Motor
+	pinMode(ENA, OUTPUT);
+	pinMode(IN1, OUTPUT);
+	pinMode(IN2, OUTPUT);
+
+	pinMode(ENB, OUTPUT);
+	pinMode(IN3, OUTPUT);
+	pinMode(IN4, OUTPUT);
+
+	Serial.begin(115200);
+
+}
+
+void loop()
+{
+	Control();
+	delay(5);
+}
